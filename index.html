@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h1 {
+            color: #1a73e8;
+            font-size: 24px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: #e3f2fd;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background: #f5f5f5;
+        }
+
+        .chat-input {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #1557b0;
+        }
+
+        .tabs {
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: transparent;
+            color: #1a73e8;
+            border: 1px solid #1a73e8;
+        }
+
+        .tab.active {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .info-panel {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            text-align: right;
+            padding: 20px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('chat')">Чат</button>
+            <button class="tab" onclick="switchTab('advanced')">Для продвинутых</button>
+            <button class="tab" onclick="newChat()">Новый чат</button>
+        </div>
+
+        <div id="info-panel" class="info-panel">
+            <h2>О модели Gemini 1.5 Flash</h2>
+            <p>Gemini 1.5 Flash - это новейшая языковая модель от Google, которая объединяет в себе передовые технологии искусственного интеллекта. Основные преимущества:</p>
+            <ul>
+                <li>Улучшенное понимание контекста</li>
+                <li>Более быстрая обработка запросов</li>
+                <li>Поддержка мультимодальности</li>
+                <li>Улучшенная точность ответов</li>
+            </ul>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>Gemini Chat</h1>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+            </div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Введите сообщение...">
+                <button onclick="sendMessage()">Отправить</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            by: Софронов Артемий
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'AIzaSyBZB-y0N8s_QNEIHJsDRjqMAmldpwCYKzE';
+        let conversationHistory = [];
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            addMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: message
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const botResponse = data.candidates[0].content.parts[0].text;
+                addMessage(botResponse, 'bot');
+                
+                conversationHistory.push({
+                    role: 'user',
+                    content: message
+                }, {
+                    role: 'assistant',
+                    content: botResponse
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Извините, произошла ошибка. Попробуйте позже.', 'bot');
+            }
+        }
+
+        function addMessage(message, sender) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', `${sender}-message`);
+            messageElement.textContent = message;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function switchTab(tab) {
+            const chatContainer = document.querySelector('.chat-container');
+            const infoPanel = document.getElementById('info-panel');
+            const tabs = document.querySelectorAll('.tab');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            if (tab === 'advanced') {
+                chatContainer.style.display = 'none';
+                infoPanel.style.display = 'block';
+                event.target.classList.add('active');
+            } else {
+                chatContainer.style.display = 'flex';
+                infoPanel.style.display = 'none';
+                document.querySelector('.tab:first-child').classList.add('active');
+            }
+        }
+
+        function newChat() {
+            conversationHistory = [];
+            document.getElementById('chat-messages').innerHTML = '';
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
